@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USUARIOS Y ROLES ====================
+
+model Usuario {
+  id                    Int       @id @default(autoincrement()) @map("id_usuario")
+  nombre                String    @db.VarChar(100)
+  apellido              String    @db.VarChar(100)
+  email                 String    @unique @db.VarChar(100)
+  password              String    @db.VarChar(255)
+  dpi                   String?   @unique @db.VarChar(13)
+  telefono              String?   @db.VarChar(15)
+  activo                Boolean   @default(true)
+  idRol                 Int       @map("id_rol")
+  requiereCambioPassword Boolean  @default(true) @map("requiere_cambio_password")
+
+  // Campos de auditoría
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+
+  // Relaciones
+  rol                   Rol       @relation(fields: [idRol], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Expedientes
+  expedientesRegistrados    Expediente[] @relation("UsuarioRegistro")
+  expedientesAsignados      Expediente[] @relation("TecnicoAsignado")
+  expedientesSupervisados   Expediente[] @relation("Supervisor")
+
+  // Indicios y cadena de custodia
+  indiciosRegistrados       Indicio[]
+
+  // bitácora
+  bitacoras                 Bitacora[]
+  documentosCargados        Documento[]
+
+  @@index([idRol])
+  @@index([deletedAt])
+  @@map("usuarios")
+}
+
+model Rol {
+  id          Int       @id @default(autoincrement()) @map("id_rol")
+  nombreRol   String    @unique @db.VarChar(50) @map("nombre_rol")
+  descripcion String?   @db.Text
+  activo      Boolean   @default(true)
+
+  // Campos de auditoría
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  // Relaciones
+  usuarios    Usuario[]
+  permisos    RolPermiso[]
+
+  @@index([deletedAt])
+  @@map("rol")
+}
+
+model Permiso {
+  id              Int       @id @default(autoincrement()) @map("id_permiso")
+  nombrePermiso   String    @db.VarChar(100) @map("nombre_permiso")
+  descripcion     String?   @db.Text
+  modulo          String?   @db.VarChar(50)
+
+  // Campos de auditoría
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relaciones
+  roles           RolPermiso[]
+
+  @@index([deletedAt])
+  @@map("permiso")
+}
+
+model RolPermiso {
+  idRol           Int       @map("id_rol")
+  idPermiso       Int       @map("id_permiso")
+
+  // Campos de auditoría
+  createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relaciones
+  rol             Rol       @relation(fields: [idRol], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  permiso         Permiso   @relation(fields: [idPermiso], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([idRol, idPermiso])
+  @@index([deletedAt])
+  @@map("rol_permiso")
+}
+
+// ==================== CATÁLOGOS ====================
+
+model Fiscalia {
+  id            Int       @id @default(autoincrement()) @map("id_fiscalia")
+  nombre        String    @db.VarChar(150)
+  codigo        String    @unique @db.VarChar(20)
+  direccion     String?   @db.VarChar(255)
+  telefono      String?   @db.VarChar(15)
+  departamento  String?   @db.VarChar(50)
+  municipio     String?   @db.VarChar(50)
+  activo        Boolean   @default(true)
+
+  // Campos de auditoría
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relaciones
+  expedientes   Expediente[]
+
+  @@index([deletedAt])
+  @@map("fiscalia")
+}
+
+model Unidad {
+  id            Int       @id @default(autoincrement()) @map("id_unidad")
+  nombreUnidad  String    @db.VarChar(100) @map("nombre_unidad")
+  codigoUnidad  String    @unique @db.VarChar(20) @map("codigo_unidad")
+  descripcion   String?   @db.Text
+  especialidad  String?   @db.VarChar(100) // Ej: Balística, Documentoscopía, Química Forense
+  activo        Boolean   @default(true)
+
+  // Campos de auditoría
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relaciones
+  expedientes   Expediente[]
+
+  @@index([deletedAt])
+  @@map("unidad")
+}
+
+model Estado {
+  id            Int       @id @default(autoincrement()) @map("id_estado")
+  nombreEstado  String    @unique @db.VarChar(50) @map("nombre_estado")
+  descripcion   String?   @db.Text
+  color         String?   @db.VarChar(7) // Color hexadecimal para UI
+  orden         Int?      // Orden de visualización
+
+  // Campos de auditoría
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relaciones
+  expedientes       Expediente[]
+
+  @@index([deletedAt])
+  @@map("estados")
+}
+
+model EstadoIndicio {
+  id          Int       @id @default(autoincrement()) @map("id_estado_indicio")
+  nombre      String    @unique @db.VarChar(50)
+  descripcion String?   @db.Text
+
+  // Campos de auditoría
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  // Relaciones
+  indicios    Indicio[]
+
+  @@index([deletedAt])
+  @@map("estado_indicio")
+}
+
+// ==================== EXPEDIENTES ====================
+
+model Expediente {
+  id                    Int       @id @default(autoincrement()) @map("id_expediente")
+  numeroExpediente      String    @unique @db.VarChar(50) @map("numero_expediente")
+  numeroCasoMp          String?   @db.VarChar(50) @map("numero_caso_mp")
+  fechaRegistro         DateTime  @default(now()) @map("fecha_registro")
+  idUsuarioRegistro     Int       @map("id_usuario_registro")
+  idTecnicoAsignado     Int       @map("id_tecnico_asignado")
+  idSupervisor          Int?      @map("id_supervisor")
+  idFiscalia            Int       @map("id_fiscalia")
+  idUnidad              Int       @map("id_unidad")
+  idEstado              Int       @map("id_estado")
+  tipoAnalisis          String?   @db.VarChar(100) @map("tipo_analisis")
+  fiscalSolicitante     String?   @db.VarChar(150) @map("fiscal_solicitante")
+  oficioSolicitud       String?   @db.VarChar(50) @map("oficio_solicitud")
+  urgencia              String?   @db.VarChar(20) // ordinario, urgente, muy_urgente
+  fechaLimite           DateTime? @map("fecha_limite") @db.Date
+  tipoDelito            String?   @db.VarChar(100) @map("tipo_delito")
+  lugarHecho            String?   @db.VarChar(255) @map("lugar_hecho")
+  fechaHecho            DateTime? @map("fecha_hecho") @db.Date
+  descripcionCaso       String?   @db.Text @map("descripcion_caso")
+  fechaInicioAnalisis   DateTime? @map("fecha_inicio_analisis")
+  fechaEntregaDictamen  DateTime? @map("fecha_entrega_dictamen")
+  observaciones         String?   @db.Text
+
+  // Campos de auditoría
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+
+  // Relaciones
+  usuarioRegistro       Usuario   @relation("UsuarioRegistro", fields: [idUsuarioRegistro], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tecnicoAsignado       Usuario   @relation("TecnicoAsignado", fields: [idTecnicoAsignado], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  supervisor            Usuario?  @relation("Supervisor", fields: [idSupervisor], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fiscalia              Fiscalia  @relation(fields: [idFiscalia], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  unidad                Unidad    @relation(fields: [idUnidad], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  estado                Estado    @relation(fields: [idEstado], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  indicios              Indicio[]
+  bitacoras             Bitacora[]
+  documentos            Documento[]
+
+  @@index([numeroCasoMp])
+  @@index([idUsuarioRegistro])
+  @@index([idTecnicoAsignado])
+  @@index([idSupervisor])
+  @@index([idFiscalia])
+  @@index([idUnidad])
+  @@index([idEstado])
+  @@index([fechaRegistro])
+  @@index([deletedAt])
+  @@map("expediente")
+}
+
+// ==================== INDICIOS ====================
+
+model Indicio {
+  id                  Int       @id @default(autoincrement()) @map("id_indicio")
+  idExpediente        Int       @map("id_expediente")
+  numeroIndicio       String    @db.VarChar(50) @map("numero_indicio")
+  descripcion         String    @db.Text
+  tipoObjeto          String?   @db.VarChar(100) @map("tipo_objeto")
+  color               String?   @db.VarChar(50)
+  tamanio             String?   @db.VarChar(100)
+  peso                Decimal?  @db.Decimal(10, 2)
+  pesoUnidad          String?   @db.VarChar(20) @map("peso_unidad")
+  ubicacionHallazgo   String?   @db.VarChar(255) @map("ubicacion_hallazgo")
+  idTecnicoRegistro   Int       @map("id_tecnico_registro")
+  fechaRegistro       DateTime  @default(now()) @map("fecha_registro")
+  idEstadoIndicio     Int       @map("id_estado_indicio")
+  observaciones       String?   @db.Text
+  cantidad            Int       @default(1)
+
+  // Campos de auditoría
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  // Relaciones
+  expediente          Expediente    @relation(fields: [idExpediente], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tecnicoRegistro     Usuario       @relation(fields: [idTecnicoRegistro], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  estadoIndicio       EstadoIndicio @relation(fields: [idEstadoIndicio], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  documentos          Documento[]
+
+  @@unique([idExpediente, numeroIndicio])
+  @@index([idExpediente])
+  @@index([idTecnicoRegistro])
+  @@index([idEstadoIndicio])
+  @@index([fechaRegistro])
+  @@index([deletedAt])
+  @@map("indicio")
+}
+
+
+// ==================== BITÁCORA Y DOCUMENTOS ====================
+
+model Bitacora {
+  id            Int       @id @default(autoincrement()) @map("id_bitacora")
+  idExpediente  Int       @map("id_expediente")
+  idUsuario     Int       @map("id_usuario")
+  accion        String    @db.VarChar(100)
+  fechaHora     DateTime  @default(now()) @map("fecha_hora")
+  descripcion   String?   @db.Text
+  ipAddress     String?   @db.VarChar(45) @map("ip_address")
+  detallesJson  String?   @db.Text @map("detalles_json") // JSON como string
+
+  // Campos de auditoría
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relaciones
+  expediente    Expediente @relation(fields: [idExpediente], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario       Usuario    @relation(fields: [idUsuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([idExpediente])
+  @@index([idUsuario])
+  @@index([fechaHora])
+  @@index([accion])
+  @@map("bitacora")
+}
+
+model Documento {
+  id              Int       @id @default(autoincrement()) @map("id_documento")
+  idExpediente    Int       @map("id_expediente")
+  idIndicio       Int?      @map("id_indicio")
+  tipoDocumento   String    @db.VarChar(50) @map("tipo_documento") // dictamen, foto, oficio, informe
+  nombreArchivo   String    @db.VarChar(255) @map("nombre_archivo")
+  rutaArchivo     String    @db.VarChar(500) @map("ruta_archivo")
+  extension       String    @db.VarChar(10)
+  tamanioKb       Int?      @map("tamanio_kb")
+  idUsuarioCarga  Int       @map("id_usuario_carga")
+  fechaCarga      DateTime  @default(now()) @map("fecha_carga")
+  descripcion     String?   @db.Text
+  version         Int       @default(1)
+
+  // Campos de auditoría
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relaciones
+  expediente      Expediente @relation(fields: [idExpediente], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  indicio         Indicio?   @relation(fields: [idIndicio], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarioCarga    Usuario    @relation(fields: [idUsuarioCarga], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([idExpediente])
+  @@index([idIndicio])
+  @@index([idUsuarioCarga])
+  @@index([fechaCarga])
+  @@index([tipoDocumento])
+  @@index([deletedAt])
+  @@map("documentos")
+}
