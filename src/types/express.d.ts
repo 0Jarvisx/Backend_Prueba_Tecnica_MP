@@ -12,6 +12,12 @@ declare global {
         idRol: number;
         permisos?: string[];
       };
+      // Contexto de auditoría
+      auditContext?: {
+        ipAddress: string;
+        userAgent: string;
+        timestamp: Date;
+      };
     }
   }
 }

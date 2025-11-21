@@ -16,6 +16,9 @@ export class UserController {
         return;
       }
 
+      const ipAddress = req.auditContext?.ipAddress;
+      const idUsuarioRegistro = req.user?.id || 0;
+
       const result = await userService.registrarUsuario({
         nombre,
         apellido,
@@ -23,6 +26,8 @@ export class UserController {
         dpi: dpi || null,
         telefono: telefono || null,
         idRol: parseInt(idRol),
+        idUsuarioRegistro,
+        ipAddress,
       });
 
       res.status(201).json(successResponse(result, result.mensaje));
@@ -93,6 +98,9 @@ export class UserController {
         return;
       }
 
+      const ipAddress = req.auditContext?.ipAddress;
+      const idUsuarioModificador = req.user?.id || 0;
+
       const result = await userService.actualizarUsuario(parseInt(id), {
         nombre,
         apellido,
@@ -101,6 +109,8 @@ export class UserController {
         telefono: telefono || null,
         idRol: parseInt(idRol),
         activo: Boolean(activo),
+        idUsuarioModificador,
+        ipAddress,
       });
 
       res.status(200).json(successResponse(undefined, result.mensaje));
@@ -122,7 +132,10 @@ export class UserController {
         return;
       }
 
-      const result = await userService.eliminarUsuario(parseInt(id));
+      const ipAddress = req.auditContext?.ipAddress;
+      const idUsuarioEliminador = req.user?.id || 0;
+
+      const result = await userService.eliminarUsuario(parseInt(id), idUsuarioEliminador, ipAddress);
 
       res.status(200).json(successResponse(undefined, result.mensaje));
     } catch (error) {

@@ -103,6 +103,28 @@ export class EmailService {
   }
 
   /**
+   * Enviar email de rechazo de expediente
+   */
+  async sendExpedienteRechazadoEmail(
+    email: string,
+    tecnicoNombre: string,
+    numeroExpediente: string,
+    motivoRechazo: string
+  ): Promise<boolean> {
+    const expedientesUrl = `${environment.frontendUrl}/expedientes`;
+
+    const html = this.getExpedienteRechazadoTemplate(tecnicoNombre, numeroExpediente, motivoRechazo, expedientesUrl);
+    const text = `Hola ${tecnicoNombre},\n\nTe informamos que el expediente ${numeroExpediente} ha sido RECHAZADO por el supervisor.\n\nMotivo del rechazo:\n${motivoRechazo}\n\nPor favor, revisa las observaciones y realiza las correcciones necesarias.\n\nAccede al expediente: ${expedientesUrl}\n\nSaludos,\nMinisterio Público - DICRI`;
+
+    return await this.sendEmail(
+      email,
+      `Expediente ${numeroExpediente} Rechazado - DICRI`,
+      html,
+      text
+    );
+  }
+
+  /**
    * Plantilla HTML para email de bienvenida
    */
   private getWelcomeTemplate(
@@ -477,6 +499,264 @@ export class EmailService {
       <p style="margin-top: 20px;">
         <strong>Saludos,</strong><br>
         Equipo de Soporte Técnico<br>
+        Dirección de Investigación Criminalística
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} Ministerio Público de Guatemala</p>
+      <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  }
+
+  /**
+   * Plantilla HTML para email de expediente rechazado
+   */
+  private getExpedienteRechazadoTemplate(
+    tecnicoNombre: string,
+    numeroExpediente: string,
+    motivoRechazo: string,
+    expedientesUrl: string
+  ): string {
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expediente Rechazado</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+      color: #ffffff;
+      padding: 30px 20px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 10px 0 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .content {
+      padding: 40px 30px;
+      color: #333333;
+      line-height: 1.6;
+    }
+    .content h2 {
+      color: #dc2626;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    .content p {
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+    .expediente-box {
+      background-color: #fee2e2;
+      border-left: 4px solid #dc2626;
+      padding: 20px;
+      margin: 25px 0;
+      border-radius: 4px;
+    }
+    .expediente-box h3 {
+      margin: 0 0 10px 0;
+      color: #dc2626;
+      font-size: 18px;
+    }
+    .expediente-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #991b1b;
+      margin: 10px 0;
+    }
+    .motivo-box {
+      background-color: #f3f4f6;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 25px 0;
+    }
+    .motivo-box h3 {
+      margin: 0 0 15px 0;
+      color: #374151;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .motivo-text {
+      color: #1f2937;
+      font-size: 15px;
+      line-height: 1.6;
+      background-color: #ffffff;
+      padding: 15px;
+      border-radius: 4px;
+      border-left: 3px solid #dc2626;
+      white-space: pre-wrap;
+    }
+    .warning-box {
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .warning-box p {
+      margin: 0;
+      color: #92400e;
+      font-size: 14px;
+    }
+    .info-box {
+      background-color: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .info-box p {
+      margin: 0;
+      color: #1e40af;
+      font-size: 14px;
+    }
+    .button-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .action-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+      color: #ffffff !important;
+      padding: 14px 40px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s;
+    }
+    .action-button:hover {
+      transform: translateY(-2px);
+    }
+    .steps-box {
+      margin: 30px 0;
+    }
+    .step-item {
+      display: flex;
+      align-items: start;
+      margin: 15px 0;
+      padding: 15px;
+      background-color: #f9fafb;
+      border-radius: 6px;
+    }
+    .step-number {
+      background-color: #dc2626;
+      color: #ffffff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .step-text {
+      color: #4b5563;
+      font-size: 15px;
+    }
+    .footer {
+      background-color: #f9fafb;
+      padding: 20px 30px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .footer p {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚠️ Expediente Rechazado</h1>
+      <p>Ministerio Público - DICRI</p>
+    </div>
+
+    <div class="content">
+      <h2>Hola ${tecnicoNombre},</h2>
+
+      <p>Te informamos que el expediente que registraste ha sido <strong style="color: #dc2626;">RECHAZADO</strong> por el supervisor y requiere correcciones.</p>
+
+      <div class="expediente-box">
+        <h3>📁 Expediente Rechazado</h3>
+        <div class="expediente-number">${numeroExpediente}</div>
+      </div>
+
+      <div class="motivo-box">
+        <h3>📋 Motivo del Rechazo:</h3>
+        <div class="motivo-text">${motivoRechazo}</div>
+      </div>
+
+      <div class="warning-box">
+        <p><strong>⚠️ Acción Requerida:</strong> Debes revisar y corregir el expediente según las observaciones indicadas por el supervisor.</p>
+      </div>
+
+      <div class="steps-box">
+        <h3 style="color: #374151; margin-bottom: 20px;">Próximos pasos:</h3>
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-text">Revisa cuidadosamente el motivo del rechazo</div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-text">Accede al expediente en el sistema</div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-text">Realiza las correcciones necesarias</div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">4</div>
+          <div class="step-text">Envía nuevamente el expediente para revisión</div>
+        </div>
+      </div>
+
+      <div class="button-container">
+        <a href="${expedientesUrl}" class="action-button">Ver Expediente</a>
+      </div>
+
+      <div class="info-box">
+        <p><strong>💡 Importante:</strong> El expediente permanecerá en estado "Rechazado" hasta que realices las correcciones y sea aprobado por el supervisor.</p>
+      </div>
+
+      <p style="margin-top: 30px;">Si tienes dudas sobre las correcciones requeridas, contacta directamente con tu supervisor.</p>
+
+      <p style="margin-top: 20px;">
+        <strong>Saludos cordiales,</strong><br>
+        Sistema de Gestión de Evidencias<br>
         Dirección de Investigación Criminalística
       </p>
     </div>

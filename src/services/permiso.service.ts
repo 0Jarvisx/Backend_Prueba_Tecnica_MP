@@ -1,4 +1,5 @@
 import { prisma } from '../config/database';
+import { bitacoraService, TipoEntidad } from './bitacora.service';
 import type {
   RegistrarPermisoResult,
   ListarPermisosResult,
@@ -16,6 +17,8 @@ export class PermisoService {
     nombrePermiso: string;
     descripcion?: string | null;
     modulo?: string | null;
+    idUsuarioRegistro?: number |null;
+    ipAddress?: string;
   }): Promise<{ id_permiso: number; mensaje: string }> {
     const result:any = await prisma.$queryRawUnsafe(
       `EXEC pr_registrar_permiso
@@ -27,6 +30,15 @@ export class PermisoService {
     if (!result || result.length === 0 || result[0].resultado === 0) {
       throw new Error(result?.[0]?.mensaje || 'Error al registrar permiso');
     }
+
+    await bitacoraService.registrarCreacion({
+      tipoEntidad: TipoEntidad.PERMISO,
+      idEntidad: result[0].id_permiso!,
+      idUsuario: data.idUsuarioRegistro,
+      descripcion: `Permiso creado: ${data.nombrePermiso}`,
+      ipAddress: data.ipAddress,
+      detalles: { modulo: data.modulo }
+    });
 
     return {
       id_permiso: result[0].id_permiso!,

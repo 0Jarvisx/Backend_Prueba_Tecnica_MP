@@ -100,7 +100,57 @@ model RolPermiso {
   @@map("rol_permiso")
 }
 
+// Asignación de supervisor a técnicos
+model SupervisorTecnico {
+  id              Int       @id @default(autoincrement()) @map("id_asignacion")
+  idSupervisor    Int       @map("id_supervisor")
+  idTecnico       Int       @unique @map("id_tecnico") // Un técnico solo puede tener un supervisor
+
+  // Campos de auditoría
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  @@index([idSupervisor])
+  @@index([deletedAt])
+  @@map("supervisor_tecnico")
+}
+
 // ==================== CATÁLOGOS ====================
+
+model Departamento {
+  id            Int       @id @default(autoincrement()) @map("id_departamento")
+  nombre        String    @unique @db.VarChar(100)
+  codigo        String    @unique @db.VarChar(10) // Código INE
+
+  // Campos de auditoría
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relaciones
+  municipios    Municipio[]
+  expedientes   Expediente[]
+
+  @@map("departamento")
+}
+
+model Municipio {
+  id              Int       @id @default(autoincrement()) @map("id_municipio")
+  idDepartamento  Int       @map("id_departamento")
+  nombre          String    @db.VarChar(100)
+  codigo          String    @unique @db.VarChar(10) // Código INE
+
+  // Campos de auditoría
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  // Relaciones
+  departamento    Departamento @relation(fields: [idDepartamento], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  expedientes     Expediente[]
+
+  @@index([idDepartamento])
+  @@map("municipio")
+}
 
 model Fiscalia {
   id            Int       @id @default(autoincrement()) @map("id_fiscalia")
@@ -193,6 +243,8 @@ model Expediente {
   idFiscalia            Int       @map("id_fiscalia")
   idUnidad              Int       @map("id_unidad")
   idEstado              Int       @map("id_estado")
+  idDepartamento        Int?      @map("id_departamento")
+  idMunicipio           Int?      @map("id_municipio")
   tipoAnalisis          String?   @db.VarChar(100) @map("tipo_analisis")
   fiscalSolicitante     String?   @db.VarChar(150) @map("fiscal_solicitante")
   oficioSolicitud       String?   @db.VarChar(50) @map("oficio_solicitud")
@@ -212,12 +264,14 @@ model Expediente {
   deletedAt             DateTime? @map("deleted_at")
 
   // Relaciones
-  usuarioRegistro       Usuario   @relation("UsuarioRegistro", fields: [idUsuarioRegistro], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  tecnicoAsignado       Usuario   @relation("TecnicoAsignado", fields: [idTecnicoAsignado], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  supervisor            Usuario?  @relation("Supervisor", fields: [idSupervisor], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  fiscalia              Fiscalia  @relation(fields: [idFiscalia], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  unidad                Unidad    @relation(fields: [idUnidad], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  estado                Estado    @relation(fields: [idEstado], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarioRegistro       Usuario       @relation("UsuarioRegistro", fields: [idUsuarioRegistro], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tecnicoAsignado       Usuario       @relation("TecnicoAsignado", fields: [idTecnicoAsignado], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  supervisor            Usuario?      @relation("Supervisor", fields: [idSupervisor], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fiscalia              Fiscalia      @relation(fields: [idFiscalia], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  unidad                Unidad        @relation(fields: [idUnidad], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  estado                Estado        @relation(fields: [idEstado], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  departamento          Departamento? @relation(fields: [idDepartamento], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  municipio             Municipio?    @relation(fields: [idMunicipio], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   indicios              Indicio[]
   bitacoras             Bitacora[]
@@ -230,6 +284,8 @@ model Expediente {
   @@index([idFiscalia])
   @@index([idUnidad])
   @@index([idEstado])
+  @@index([idDepartamento])
+  @@index([idMunicipio])
   @@index([fechaRegistro])
   @@index([deletedAt])
   @@map("expediente")

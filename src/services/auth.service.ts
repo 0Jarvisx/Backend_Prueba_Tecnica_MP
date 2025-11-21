@@ -12,13 +12,14 @@ import {
   ResetearPasswordResult
 } from '../types/stored-procedures';
 import { emailService } from './email.service';
+import { bitacoraService } from './bitacora.service';
 import logger from '../utils/logger';
 
 export class AuthService {
   /**
    * Login de usuario
    */
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<LoginResponse> {
     try {
       // Ejecutar procedimiento almacenado
       const escapedEmail = email.replace(/'/g, "''");
@@ -51,18 +52,25 @@ export class AuthService {
         idRol: usuario.id_rol
       });
 
-      // Parsear permisos JSON
-      let permisos: string[] = [];
+      // Parsear permisos JSON - retornar objeto completo con id, nombre, descripcion y modulo
+      let permisos: { id_permiso: number; nombre_permiso: string; descripcion: string | null; modulo: string | null }[] = [];
       if (usuario.permisos) {
         try {
-          const permisosArray = JSON.parse(usuario.permisos);
-          permisos = permisosArray.map((p: any) => p.nombre_permiso);
+          permisos = JSON.parse(usuario.permisos);
         } catch (error) {
           logger.error('Error al parsear permisos JSON:', error);
         }
       }
 
       logger.info(`Usuario ${usuario.email} inició sesión`);
+
+      // Registrar login en bitácora
+      await bitacoraService.registrarLogin({
+        idUsuario: usuario.id_usuario,
+        email: usuario.email,
+        ipAddress,
+        userAgent
+      });
 
       return {
         token,
@@ -154,7 +162,8 @@ export class AuthService {
   async changePassword(
     userId: number,
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
+    ipAddress?: string
   ): Promise<void> {
     // Primero obtener el usuario para validar la contraseña actual
     const usuario = await prisma.usuario.findUnique({
@@ -184,6 +193,14 @@ export class AuthService {
     }
 
     logger.info(`Usuario ${usuario.email} cambió su contraseña`);
+
+    // Registrar cambio de contraseña en bitácora
+    await bitacoraService.registrarCambioPassword({
+      idUsuario: userId,
+      email: usuario.email,
+      ipAddress,
+      esPrimerCambio: usuario.requiereCambioPassword
+    });
   }
 
   /**

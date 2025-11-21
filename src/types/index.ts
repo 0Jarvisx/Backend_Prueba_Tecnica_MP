@@ -29,6 +29,13 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface Permiso {
+  id_permiso: number;
+  nombre_permiso: string;
+  descripcion: string | null;
+  modulo: string | null;
+}
+
 export interface LoginResponse {
   token: string;
   user: {
@@ -37,7 +44,7 @@ export interface LoginResponse {
     nombre: string;
     apellido: string;
     rol: string;
-    permisos: string[];
+    permisos: Permiso[];
   };
   requiereCambioPassword: boolean;
 }
@@ -115,3 +122,7 @@ export const ESTADOS_INDICIO = {
 } as const;
 
 export type EstadoIndicioType = typeof ESTADOS_INDICIO[keyof typeof ESTADOS_INDICIO];
+
+// Tipos de Bitácora y Auditoría
+export { TipoEntidad, AccionBitacora } from '../services/bitacora.service';
+export type { RegistroBitacoraData, FiltrosBitacora } from '../services/bitacora.service';

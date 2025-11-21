@@ -14,7 +14,10 @@ export class AuthController {
       }
 
       const { email, password } = req.body;
-      const result = await authService.login(email, password);
+      const ipAddress = req.auditContext?.ipAddress;
+      const userAgent = req.auditContext?.userAgent;
+
+      const result = await authService.login(email, password, ipAddress, userAgent);
 
       return res.status(200).json(successResponse(result, 'Login exitoso'));
     } catch (error) {
@@ -63,7 +66,9 @@ export class AuthController {
       }
 
       const { currentPassword, newPassword } = req.body;
-      await authService.changePassword(userId, currentPassword, newPassword);
+      const ipAddress = req.auditContext?.ipAddress;
+
+      await authService.changePassword(userId, currentPassword, newPassword, ipAddress);
 
       return res.status(200).json(successResponse(null, 'Contraseña actualizada exitosamente'));
     } catch (error) {

@@ -2,6 +2,7 @@ import { prisma } from '../config/database';
 import bcrypt from 'bcryptjs';
 import { environment } from '../config/environment';
 import { emailService } from './email.service';
+import { bitacoraService, TipoEntidad } from './bitacora.service';
 import logger from '../utils/logger';
 import { generateRandomPassword } from '../utils/passwordGenerator';
 import type {
@@ -24,6 +25,8 @@ export class UserService {
     dpi?: string | null;
     telefono?: string | null;
     idRol: number;
+    idUsuarioRegistro: number;
+    ipAddress?: string;
   }): Promise<{ id_usuario: number; mensaje: string }> {
     // Generar contraseña aleatoria
     const generatedPassword = generateRandomPassword(12);
@@ -62,6 +65,22 @@ export class UserService {
         generatedPassword
       ).catch(error => {
         logger.error('Error al enviar email de bienvenida:', error);
+      });
+
+      // Registrar en bitácora
+      await bitacoraService.registrarCreacion({
+        tipoEntidad: TipoEntidad.USUARIO,
+        idEntidad: result[0].id_usuario!,
+        idUsuario: data.idUsuarioRegistro,
+        descripcion: `Usuario creado: ${data.email} (${data.nombre} ${data.apellido})`,
+        ipAddress: data.ipAddress,
+        detalles: {
+          email: data.email,
+          nombre: data.nombre,
+          apellido: data.apellido,
+          rol: roleName,
+          dpi: data.dpi
+        }
       });
     } catch (error) {
       logger.error('Error al obtener rol para email de bienvenida:', error);
@@ -147,8 +166,12 @@ export class UserService {
       telefono?: string | null;
       idRol: number;
       activo: boolean;
+      idUsuarioModificador: number;
+      ipAddress?: string;
     }
   ): Promise<{ mensaje: string }> {
+    // Obtener datos anteriores
+    const usuarioAnterior = await this.obtenerUsuario(idUsuario);
     const result:any = await prisma.$queryRawUnsafe(
       `EXEC pr_actualizar_usuario
         @idUsuario = ${idUsuario},
@@ -165,6 +188,38 @@ export class UserService {
       throw new Error(result?.[0]?.mensaje || 'Error al actualizar usuario');
     }
 
+    // Detectar cambios para registrar en bitácora
+    const cambios: string[] = [];
+    if (usuarioAnterior.nombre !== data.nombre) cambios.push('nombre');
+    if (usuarioAnterior.apellido !== data.apellido) cambios.push('apellido');
+    if (usuarioAnterior.email !== data.email) cambios.push('email');
+    if (usuarioAnterior.id_rol !== data.idRol) cambios.push('rol');
+    if (usuarioAnterior.activo !== data.activo) cambios.push('estado');
+
+    if (cambios.length > 0) {
+      await bitacoraService.registrarActualizacion({
+        tipoEntidad: TipoEntidad.USUARIO,
+        idEntidad: idUsuario,
+        idUsuario: data.idUsuarioModificador,
+        descripcion: `Usuario actualizado: ${data.email}`,
+        ipAddress: data.ipAddress,
+        camposActualizados: cambios,
+        valoresAnteriores: {
+          nombre: usuarioAnterior.nombre,
+          apellido: usuarioAnterior.apellido,
+          email: usuarioAnterior.email,
+          rol: usuarioAnterior.nombre_rol,
+          activo: usuarioAnterior.activo
+        },
+        valoresNuevos: {
+          nombre: data.nombre,
+          apellido: data.apellido,
+          email: data.email,
+          activo: data.activo
+        }
+      });
+    }
+
     return {
       mensaje: result[0].mensaje,
     };
@@ -173,7 +228,9 @@ export class UserService {
   /**
    * Eliminar un usuario (soft delete)
    */
-  async eliminarUsuario(idUsuario: number): Promise<{ mensaje: string }> {
+  async eliminarUsuario(idUsuario: number, idUsuarioEliminador: number, ipAddress?: string): Promise<{ mensaje: string }> {
+    // Obtener datos del usuario antes de eliminar
+    const usuario = await this.obtenerUsuario(idUsuario);
     const result:any = await prisma.$queryRawUnsafe(
       `EXEC pr_eliminar_usuario @idUsuario = ${idUsuario}`
     );
@@ -181,6 +238,21 @@ export class UserService {
     if (!result || result.length === 0 || result[0].resultado === 0) {
       throw new Error(result?.[0]?.mensaje || 'Error al eliminar usuario');
     }
+
+    // Registrar en bitácora
+    await bitacoraService.registrarEliminacion({
+      tipoEntidad: TipoEntidad.USUARIO,
+      idEntidad: idUsuario,
+      idUsuario: idUsuarioEliminador,
+      descripcion: `Usuario eliminado: ${usuario.email} (${usuario.nombre} ${usuario.apellido})`,
+      ipAddress,
+      detalles: {
+        email: usuario.email,
+        nombre: usuario.nombre,
+        apellido: usuario.apellido,
+        rol: usuario.nombre_rol
+      }
+    });
 
     return {
       mensaje: result[0].mensaje,

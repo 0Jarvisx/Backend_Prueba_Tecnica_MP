@@ -1,4 +1,5 @@
 import { prisma } from '../config/database';
+import { bitacoraService, TipoEntidad, AccionBitacora } from './bitacora.service';
 import type {
   RegistrarRolResult,
   ListarRolesPaginadoResult,
@@ -15,6 +16,8 @@ export class RolService {
   async registrarRol(data: {
     nombreRol: string;
     descripcion?: string | null;
+    idUsuarioRegistro?: number;
+    ipAddress?: string;
   }): Promise<{ id_rol: number; mensaje: string }> {
     const result:any = await prisma.$queryRawUnsafe(
       `EXEC pr_registrar_rol
@@ -25,6 +28,14 @@ export class RolService {
     if (!result || result.length === 0 || result[0].resultado === 0) {
       throw new Error(result?.[0]?.mensaje || 'Error al registrar rol');
     }
+
+    await bitacoraService.registrarCreacion({
+      tipoEntidad: TipoEntidad.ROL,
+      idEntidad: result[0].id_rol!,
+      idUsuario: data.idUsuarioRegistro,
+      descripcion: `Rol creado: ${data.nombreRol}`,
+      ipAddress: data.ipAddress
+    });
 
     return {
       id_rol: result[0].id_rol!,
@@ -144,7 +155,8 @@ export class RolService {
   /**
    * Asignar permisos a un rol
    */
-  async asignarPermisos(idRol: number, permisos: number[]): Promise<{ mensaje: string }> {
+  async asignarPermisos(idRol: number, permisos: number[], idUsuario?: number, ipAddress?: string): Promise<{ mensaje: string }> {
+    const rol = await this.obtenerRol(idRol);
     const permisosJson = JSON.stringify(permisos);
 
     const result:any = await prisma.$queryRawUnsafe(
@@ -156,6 +168,16 @@ export class RolService {
     if (!result || result.length === 0 || result[0].resultado === 0) {
       throw new Error(result?.[0]?.mensaje || 'Error al asignar permisos');
     }
+
+    await bitacoraService.registrarAccion({
+      tipoEntidad: TipoEntidad.ROL,
+      idEntidad: idRol,
+      idUsuario,
+      accion: AccionBitacora.GRANT_PERMISSION,
+      descripcion: `Permisos asignados al rol: ${rol.nombre_rol}`,
+      ipAddress,
+      detalles: { permisos: permisos.map(String), metadata: { cantidadPermisos: permisos.length } }
+    });
 
     return {
       mensaje: result[0].mensaje,
